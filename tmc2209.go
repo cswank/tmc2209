@@ -13,6 +13,15 @@ type Motor struct {
 	microsteps uint32
 }
 
+func SpreadCycle() []Register {
+	return []Register{
+		&NodeConf{SendDelay: 2},
+		&Gconf{EnSpreadcycle: 1, PdnDisable: 1, MstepRegSelect: 1},
+		&IholdIrun{},
+		&PWMConf{PwmAutoscale: 1, PwmAutograd: 1, PwmReg: 8},
+	}
+}
+
 func New(uart serial.Port, address uint8, ms uint32) *Motor {
 	return &Motor{
 		uart:       uart,
@@ -36,24 +45,10 @@ func (m *Motor) Setup(opts ...Register) error {
 		return err
 	}
 
-	nc := NodeConf{SendDelay: 2}
-	if err := m.write(&nc); err != nil {
-		return err
-	}
-
-	gc := Gconf{EnSpreadcycle: 1, PdnDisable: 1, MstepRegSelect: 1}
-	if err := m.write(&gc); err != nil {
-		return err
-	}
-
-	ih := IholdIrun{}
-	if err := m.write(&ih); err != nil {
-		return err
-	}
-
-	pw := PWMConf{PwmAutoscale: 1, PwmAutograd: 1, PwmReg: 8}
-	if err := m.write(&pw); err != nil {
-		return err
+	for _, opt := range opts {
+		if err := m.write(opt); err != nil {
+			return err
+		}
 	}
 
 	if err := m.Microsteps(m.microsteps); err != nil {
@@ -65,8 +60,8 @@ func (m *Motor) Setup(opts ...Register) error {
 		return err
 	}
 
-	if ifcnt2-ifcnt != 5 { //did 5 writes, so make sure they were accepted
-		return fmt.Errorf("setup failed, did write 5 times (%d)", ifcnt2-ifcnt)
+	if ifcnt2-ifcnt != uint32(len(opts)+1) {
+		return fmt.Errorf("setup failed, %d writes not registered (%d)", len(opts)+1, ifcnt2-ifcnt)
 	}
 
 	return nil

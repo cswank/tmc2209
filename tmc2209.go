@@ -31,12 +31,6 @@ func (m *Motor) Microsteps(ms uint32) error {
 }
 
 func (m *Motor) Setup() error {
-	x, err := m.read(GSTAT)
-	fmt.Printf("gstat: %03b, err: %v\n", x, err)
-
-	x, err = m.read(IFCNT)
-	fmt.Printf("ifcnt: %d, err: %v\n", x, err)
-
 	nc := NodeConf{SendDelay: 2}
 	if err := m.write(NODECONF, nc.Pack()); err != nil {
 		return err
@@ -47,36 +41,16 @@ func (m *Motor) Setup() error {
 		return err
 	}
 
-	fmt.Printf("gconf: %010b\n", gc.Pack())
-
-	x, err = m.read(GCONF)
-	fmt.Printf("gconf: %010b, err: %v\n", x, err)
-
-	x, err = m.read(IFCNT)
-	fmt.Printf("ifcnt: %d, err: %v\n", x, err)
-
 	if err := m.write(IHOLD_IRUN, 0); err != nil {
 		return err
 	}
-
-	x, err = m.read(IFCNT)
-	fmt.Printf("ifcnt: %d, err: %v\n", x, err)
 
 	pw := PWMConf{PwmAutoscale: 1, PwmAutograd: 1, PwmReg: 8}
 	if err := m.write(PWMCONF, pw.Pack()); err != nil {
 		return err
 	}
 
-	x, err = m.read(IFCNT)
-	fmt.Printf("ifcnt: %d, err: %v\n", x, err)
-
-	if err := m.Microsteps(m.microsteps); err != nil {
-		return err
-	}
-
-	x, err = m.read(GSTAT)
-	fmt.Printf("gstat: %b, err: %v\n", x, err)
-	return nil
+	return m.Microsteps(m.microsteps)
 }
 
 // the formula is rps / 0.715 * steps * microsteps
@@ -87,24 +61,22 @@ func (m *Motor) Setup() error {
 // so 1 rev per second on a 200 step motor set to 16 micro steps is
 // 1 / 0.715 * 200 * 16 = 4476
 func (m *Motor) Move(rps float64) error {
-	if err := m.write(VACTUAL, uint32((rps/0.715)*200*float64(m.microsteps))); err != nil {
-		return err
-	}
+	return m.write(VACTUAL, uint32((rps/0.715)*200*float64(m.microsteps)))
+}
 
-	// val, err := m.read(IFCNT)
-	// fmt.Printf("IFCNT: %d, err: %v\n", val, err)
-	return nil
+func (m *Motor) Ifcnt(rps float64) (uint32, error) {
+	return m.read(IFCNT)
 }
 
 func (m *Motor) write(register uint8, value uint32) error {
 	buffer := []byte{
-		0x05,                       // Sync byte
-		m.address,                  // Slave address
-		register | 0x80,            // Write command (set MSB to 1 for write)
-		byte((value >> 24) & 0xFF), // MSB of value
-		byte((value >> 16) & 0xFF), // Middle byte
-		byte((value >> 8) & 0xFF),  // Next byte
-		byte(value & 0xFF),         // LSB of value
+		0x05,
+		m.address,
+		register | 0x80,
+		byte((value >> 24) & 0xFF),
+		byte((value >> 16) & 0xFF),
+		byte((value >> 8) & 0xFF),
+		byte(value & 0xFF),
 		0,
 	}
 
@@ -118,9 +90,9 @@ func (m *Motor) read(register uint8) (uint32, error) {
 	m.uart.ResetInputBuffer()
 
 	writeBuffer := []byte{
-		0x05,            // Sync byte
-		m.address,       // Slave address
-		register & 0x7f, // Read command (MSB clear for read)
+		0x05,
+		m.address,
+		register & 0x7f,
 		0,
 	}
 
@@ -159,7 +131,7 @@ func (m *Motor) read(register uint8) (uint32, error) {
 		return 0, fmt.Errorf("checksum error, expected %x, got %x", checksum, readBuffer[7])
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond) //make sure subsequent reads/writes don't happen when the driver's UART is inactive (according to SENDDELAY)
 
 	return uint32(readBuffer[3])<<24 |
 		uint32(readBuffer[4])<<16 |
@@ -210,89 +182,3 @@ func Constrain(value, low, high uint32) uint32 {
 	}
 	return value
 }
-
-func SetRunCurrent(percent uint8) {
-	_ = PercentToCurrentSetting(percent)
-
-	// Set the run current register to runCurrent value
-}
-
-func SetHoldCurrent(percent uint8) {
-	_ = PercentToCurrentSetting(percent)
-	// Set the hold current register to holdCurrent value
-}
-func PercentToCurrentSetting(percent uint8) uint8 {
-	constrainedPercent := Constrain(uint32(percent), 0, 100)
-	return uint8(Map(constrainedPercent, 0, 100, 0, 255))
-}
-
-func CurrentSettingToPercent(currentSetting uint8) uint8 {
-	return uint8(Map(uint32(currentSetting), 0, 255, 0, 100))
-}
-
-func PercentToHoldDelaySetting(percent uint8) uint8 {
-	constrainedPercent := Constrain(uint32(percent), 0, 100)
-	return uint8(Map(constrainedPercent, 0, 100, 0, 255))
-}
-
-func HoldDelaySettingToPercent(holdDelaySetting uint8) uint8 {
-	return uint8(Map(uint32(holdDelaySetting), 0, 255, 0, 100))
-}
-func Map(value, fromLow, fromHigh, toLow, toHigh uint32) uint32 {
-	return (value-fromLow)*(toHigh-toLow)/(fromHigh-fromLow) + toLow
-}
-
-// VerifyCommunication checks the communication with the TMC2209 by reading the version register (IOIN).
-// It returns true if the communication is successful (i.e., the version matches the expected version).
-// VerifyCommunication verifies the communication with the TMC2209 by reading the version register (IOIN).
-// It explicitly resets the struct and de-references it after the check to ensure memory is managed manually.
-// func VerifyCommunication(comm *Motor, driverIndex uint8) bool {
-// 	var io *Ioin
-// 	if io == nil {
-// 		io = NewIoin() // Initialize the struct if not already initialized
-// 	} else {
-// 		*io = Ioin{}
-// 	}
-// 	_, err := comm.read(io.GetAddress())
-// 	if err != nil {
-// 		return false
-// 	}
-// 	if io.Version == expectedVersion {
-// 		io = nil
-// 		return true
-// 	}
-// 	io = nil
-// 	return false
-// }
-
-// // CheckErrorStatus verifies the communication and checks for error flags in the TMC2209 driver status.
-// // It explicitly resets the struct and de-references it when done to ensure memory is managed manually.
-// func CheckErrorStatus(comm RegisterComm, driverIndex uint8) bool {
-// 	var d *DrvStatus
-// 	if d == nil {
-// 		d = NewDrvStatus()
-// 	} else {
-// 		*d = DrvStatus{}
-// 	}
-// 	_, err := d.Read(comm, driverIndex)
-// 	if err != nil {
-// 		return false
-// 	}
-// 	errorFlags := d.Ola | d.S2vsa | d.S2vsb | d.Ot | d.S2ga | d.S2gb | d.Olb
-// 	if errorFlags != 0 {
-// 		log.Printf("TMC2209 Error Detected: %X", errorFlags)
-// 		return false
-// 	}
-// 	d = nil
-// 	return true
-// }
-
-// // GetInterfaceTransmissionCount reads the IFCNT register to check for UART transmission status
-// func GetInterfaceTransmissionCount(comm *Motor, driverIndex uint8) (uint32, error) {
-// 	ifcnt := NewIfcnt()
-// 	_, err := comm.read(ifcnt.GetAddress())
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	return ifcnt.Bytes, nil
-// }

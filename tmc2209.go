@@ -31,6 +31,11 @@ func (m *Motor) Microsteps(ms uint32) error {
 }
 
 func (m *Motor) Setup() error {
+	ifcnt, err := m.read(IFCNT)
+	if err != nil {
+		return err
+	}
+
 	nc := NodeConf{SendDelay: 2}
 	if err := m.write(NODECONF, nc.Pack()); err != nil {
 		return err
@@ -50,7 +55,20 @@ func (m *Motor) Setup() error {
 		return err
 	}
 
-	return m.Microsteps(m.microsteps)
+	if err := m.Microsteps(m.microsteps); err != nil {
+		return err
+	}
+
+	ifcnt2, err := m.read(IFCNT)
+	if err != nil {
+		return err
+	}
+
+	if ifcnt2-ifcnt != 5 { //did 5 writes, so make sure they were accepted
+		return fmt.Errorf("setup failed, did write 5 times (%d)", ifcnt2-ifcnt)
+	}
+
+	return nil
 }
 
 // the formula is rps / 0.715 * steps * microsteps

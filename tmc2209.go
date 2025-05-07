@@ -11,13 +11,14 @@ type Motor struct {
 	uart       serial.Port
 	address    uint8
 	microsteps uint32
+	hz         float64
 }
 
 func SpreadCycle() []Register {
 	return []Register{
 		&NodeConf{SendDelay: 2},
-		&Gconf{EnSpreadcycle: 1, PdnDisable: 1, MstepRegSelect: 1},
-		&IholdIrun{},
+		&Gconf{EnSpreadcycle: 1, PdnDisable: 1, MstepRegSelect: 1, IndexStep: 1},
+		&IholdIrun{Ihold: 1, Irun: 31},
 		&PWMConf{PwmAutoscale: 1, PwmAutograd: 1, PwmReg: 8},
 	}
 }
@@ -74,8 +75,15 @@ func (m *Motor) Setup(opts ...Register) error {
 // microsteps is the microsteps
 // so 1 rev per second on a 200 step motor set to 16 micro steps is
 // 1 / 0.715 * 200 * 16 = 4476
-func (m *Motor) Move(rps float64) error {
-	return m.write(&Vactual{Velocity: uint32((rps / 0.715) * 200 * float64(m.microsteps))})
+func (m *Motor) Move(hz float64) error {
+	for _, r := range m.ramp(hz) {
+		if err := m.write(&Vactual{Velocity: uint32((r / 0.715) * 200 * float64(m.microsteps))}); err != nil {
+			return err
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	m.hz = hz
+	return nil
 }
 
 func (m *Motor) Ifcnt(rps float64) (uint32, error) {
@@ -188,12 +196,32 @@ func mres(microsteps uint32) uint32 {
 	return 8 - value
 }
 
-func Constrain(value, low, high uint32) uint32 {
-	if value < low {
-		return low
+func (m *Motor) ramp(hz float64) []float64 {
+	var ramp []float64
+
+	if hz < 0 {
+		return ramp
 	}
-	if value > high {
-		return high
+
+	if hz > m.hz {
+		for i := m.hz + 1; i < hz; i++ {
+			if i >= hz {
+				i = hz
+			}
+			ramp = append(ramp, i)
+		}
+		ramp = append(ramp, hz)
+	} else {
+		for i := m.hz - 1; i > hz-1; i-- {
+			if i <= hz {
+				i = hz
+			}
+			if i > 0 {
+				ramp = append(ramp, i)
+			}
+		}
+		ramp = append(ramp, hz)
 	}
-	return value
+
+	return ramp
 }

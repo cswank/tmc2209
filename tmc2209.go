@@ -27,31 +27,32 @@ func (m *Motor) Microsteps(ms uint32) error {
 		Toff: 5,
 		Mres: mres(ms),
 	}
-	return m.write(CHOPCONF, cf.Pack())
+	return m.write(&cf)
 }
 
-func (m *Motor) Setup() error {
+func (m *Motor) Setup(opts ...Register) error {
 	ifcnt, err := m.read(IFCNT)
 	if err != nil {
 		return err
 	}
 
 	nc := NodeConf{SendDelay: 2}
-	if err := m.write(NODECONF, nc.Pack()); err != nil {
+	if err := m.write(&nc); err != nil {
 		return err
 	}
 
 	gc := Gconf{EnSpreadcycle: 1, PdnDisable: 1, MstepRegSelect: 1}
-	if err := m.write(GCONF, gc.Pack()); err != nil {
+	if err := m.write(&gc); err != nil {
 		return err
 	}
 
-	if err := m.write(IHOLD_IRUN, 0); err != nil {
+	ih := IholdIrun{}
+	if err := m.write(&ih); err != nil {
 		return err
 	}
 
 	pw := PWMConf{PwmAutoscale: 1, PwmAutograd: 1, PwmReg: 8}
-	if err := m.write(PWMCONF, pw.Pack()); err != nil {
+	if err := m.write(&pw); err != nil {
 		return err
 	}
 
@@ -79,14 +80,15 @@ func (m *Motor) Setup() error {
 // so 1 rev per second on a 200 step motor set to 16 micro steps is
 // 1 / 0.715 * 200 * 16 = 4476
 func (m *Motor) Move(rps float64) error {
-	return m.write(VACTUAL, uint32((rps/0.715)*200*float64(m.microsteps)))
+	return m.write(&Vactual{Velocity: uint32((rps / 0.715) * 200 * float64(m.microsteps))})
 }
 
 func (m *Motor) Ifcnt(rps float64) (uint32, error) {
 	return m.read(IFCNT)
 }
 
-func (m *Motor) write(register uint8, value uint32) error {
+func (m *Motor) write(r Register) error {
+	register, value := r.Pack()
 	buffer := []byte{
 		0x05,
 		m.address,

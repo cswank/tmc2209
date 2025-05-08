@@ -3,16 +3,25 @@ package tmc2209
 import (
 	"fmt"
 	"time"
-
-	"go.bug.st/serial"
 )
 
-type Motor struct {
-	uart       serial.Port
-	address    uint8
-	microsteps uint32
-	hz         float64
-}
+type (
+	Serial interface {
+		Read(p []byte) (n int, err error)
+		Write(p []byte) (n int, err error)
+		ResetInputBuffer() error
+		ResetOutputBuffer() error
+		SetReadTimeout(t time.Duration) error
+	}
+
+	Motor struct {
+		uart       Serial
+		address    uint8
+		microsteps uint32
+		steps      uint32
+		hz         float64
+	}
+)
 
 func SpreadCycle() []Register {
 	return []Register{
@@ -23,21 +32,14 @@ func SpreadCycle() []Register {
 	}
 }
 
-func New(uart serial.Port, address uint8, ms uint32) *Motor {
+func New(uart Serial, address uint8, steps, ms uint32) *Motor {
+	uart.SetReadTimeout(200 * time.Millisecond)
 	return &Motor{
 		uart:       uart,
 		address:    address,
 		microsteps: ms,
+		steps:      steps,
 	}
-}
-
-func (m *Motor) Microsteps(ms uint32) error {
-	m.microsteps = ms
-	cf := Chopconf{
-		Toff: 5,
-		Mres: mres(ms),
-	}
-	return m.write(&cf)
 }
 
 func (m *Motor) Setup(opts ...Register) error {
@@ -68,16 +70,16 @@ func (m *Motor) Setup(opts ...Register) error {
 	return nil
 }
 
-// the formula is rps / 0.715 * steps * microsteps
-// rps is revolutions per second
+func (m *Motor) Microsteps(ms uint32) error {
+	m.microsteps = ms
+	return m.write(&Chopconf{Toff: 5, Mres: mres(ms), Intpol: 1})
+}
+
+// velocity = hz / 0.715 * steps * microsteps
 // 0.715 is the built in pulse generator
-// steps is the number of steps on the motor
-// microsteps is the microsteps
-// so 1 rev per second on a 200 step motor set to 16 micro steps is
-// 1 / 0.715 * 200 * 16 = 4476
 func (m *Motor) Move(hz float64) error {
 	for _, r := range m.ramp(hz) {
-		if err := m.write(&Vactual{Velocity: uint32((r / 0.715) * 200 * float64(m.microsteps))}); err != nil {
+		if err := m.write(&Vactual{Velocity: uint32((r / 0.715) * float64(m.steps) * float64(m.microsteps))}); err != nil {
 			return err
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -112,13 +114,7 @@ func (m *Motor) write(r Register) error {
 func (m *Motor) read(register uint8) (uint32, error) {
 	m.uart.ResetInputBuffer()
 
-	writeBuffer := []byte{
-		0x05,
-		m.address,
-		register & 0x7f,
-		0,
-	}
-
+	writeBuffer := []byte{0x05, m.address, register & 0x7f, 0}
 	writeBuffer[3] = m.crc(writeBuffer[:3])
 
 	_, err := m.uart.Write(writeBuffer)
@@ -127,7 +123,7 @@ func (m *Motor) read(register uint8) (uint32, error) {
 	}
 
 	time.Sleep(10 * time.Millisecond)
-	trashBuf := make([]byte, 4) //read request write will be in the buffer
+	trashBuf := make([]byte, 4) // the read request will be in the rx buffer since the tx and rx pins are connected
 	_, err = m.uart.Read(trashBuf)
 	if err != nil {
 		return 0, err
@@ -199,26 +195,19 @@ func mres(microsteps uint32) uint32 {
 func (m *Motor) ramp(hz float64) []float64 {
 	var ramp []float64
 
-	if hz < 0 {
-		return ramp
-	}
-
 	if hz > m.hz {
 		for i := m.hz + 1; i < hz; i++ {
-			if i >= hz {
-				i = hz
-			}
+			ramp = append(ramp, i)
+		}
+		ramp = append(ramp, hz)
+	} else if hz < 0 && hz < m.hz {
+		for i := m.hz - 1; i > hz; i-- {
 			ramp = append(ramp, i)
 		}
 		ramp = append(ramp, hz)
 	} else {
-		for i := m.hz - 1; i > hz-1; i-- {
-			if i <= hz {
-				i = hz
-			}
-			if i > 0 {
-				ramp = append(ramp, i)
-			}
+		for i := m.hz - 1; i > hz; i-- {
+			ramp = append(ramp, i)
 		}
 		ramp = append(ramp, hz)
 	}

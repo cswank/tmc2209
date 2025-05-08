@@ -25,7 +25,6 @@ const (
 	PWM_AUTO   = byte(0x72)
 )
 
-// Register is an interface that all register structs will implement for generic access
 type Register interface {
 	Pack() (addr uint8, register uint32)
 	Unpack(value uint32)
@@ -37,28 +36,6 @@ type Register interface {
 // that the driver uses to determine its current state. This register contains
 // bits related to motor driver status, step input, direction, diagnostics,
 // and other control signals.
-//
-// The structure represents each field in the IOIN register and provides
-// methods to pack and unpack these fields into the `Bytes` field (a 32-bit
-// packed representation of all fields) for easier access and manipulation.
-//
-// Fields:
-// - Enn:       Enables the driver. 1 = Driver enabled, 0 = Driver disabled.
-// - Reserved0: Reserved bit, must be set to 0.
-// - Ms1:       Microstep setting, first bit of the microstep configuration.
-// - Ms2:       Microstep setting, second bit of the microstep configuration.
-// - Diag:      Diagnostics flag. Used for fault detection and error reporting.
-// - Reserved1: Reserved bit, must be set to 0.
-// - PdnSerial: Power-down (sleep) state for the UART interface. 1 = Power down, 0 = Active.
-// - Step:      Step input signal. 1 = Step signal active, 0 = No step signal.
-// - SpreadEn:  SpreadCycle enable. 1 = Enable SpreadCycle, 0 = Disable SpreadCycle.
-// - Dir:       Direction input. 1 = Reverse direction, 0 = Forward direction.
-// - Reserved2: Reserved bits, must be set to 0.
-// - Version:   Driver version information. The version of the IOIN register in the TMC2209 chip.
-//
-// `Bytes`: A 32-bit value that stores the packed representation of the IOIN register.
-// The `Bytes` field is used to manipulate the register's value as a single 32-bit value,
-// allowing you to read and write it more efficiently.
 type Ioin struct {
 	Enn       uint32 // 1-bit field: Driver enable status (1 = enabled, 0 = disabled)
 	Reserved0 uint32 // 1-bit field: Reserved, should always be 0
@@ -74,40 +51,34 @@ type Ioin struct {
 	Version   uint32 // 8-bit field: Version information for the driver
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-// This method combines all the individual fields (like Enn, Ms1, etc.)
-// into a packed 32-bit value that can be written to the register.
-func (ioin *Ioin) Pack() (uint8, uint32) {
-	return IOIN, (ioin.Enn & 0x01) | // Enn field (1 bit)
-		((ioin.Reserved0 & 0x01) << 1) | // Reserved0 field (1 bit)
-		((ioin.Ms1 & 0x01) << 2) | // Ms1 field (1 bit)
-		((ioin.Ms2 & 0x01) << 3) | // Ms2 field (1 bit)
-		((ioin.Diag & 0x01) << 4) | // Diag field (1 bit)
-		((ioin.Reserved1 & 0x01) << 5) | // Reserved1 field (1 bit)
-		((ioin.PdnSerial & 0x01) << 6) | // PdnSerial field (1 bit)
-		((ioin.Step & 0x01) << 7) | // Step field (1 bit)
-		((ioin.SpreadEn & 0x01) << 8) | // SpreadEn field (1 bit)
-		((ioin.Dir & 0x01) << 9) | // Dir field (1 bit)
-		((ioin.Reserved2 & 0x3FFF) << 10) | // Reserved2 field (14 bits)
-		((ioin.Version & 0xFF) << 24) // Version field (8 bits)
+func (i *Ioin) Pack() (uint8, uint32) {
+	return IOIN, (i.Enn & 0x01) | // Enn field (1 bit)
+		((i.Reserved0 & 0x01) << 1) | // Reserved0 field (1 bit)
+		((i.Ms1 & 0x01) << 2) | // Ms1 field (1 bit)
+		((i.Ms2 & 0x01) << 3) | // Ms2 field (1 bit)
+		((i.Diag & 0x01) << 4) | // Diag field (1 bit)
+		((i.Reserved1 & 0x01) << 5) | // Reserved1 field (1 bit)
+		((i.PdnSerial & 0x01) << 6) | // PdnSerial field (1 bit)
+		((i.Step & 0x01) << 7) | // Step field (1 bit)
+		((i.SpreadEn & 0x01) << 8) | // SpreadEn field (1 bit)
+		((i.Dir & 0x01) << 9) | // Dir field (1 bit)
+		((i.Reserved2 & 0x3FFF) << 10) | // Reserved2 field (14 bits)
+		((i.Version & 0xFF) << 24) // Version field (8 bits)
 }
 
-// Unpack the Bytes field into the individual fields.
-// This method takes the packed 32-bit value from the Bytes field and extracts
-// the individual register fields into their corresponding variables.
-func (ioin *Ioin) Unpack(val uint32) {
-	ioin.Enn = val & 0x01
-	ioin.Reserved0 = (val >> 1) & 0x01
-	ioin.Ms1 = (val >> 2) & 0x01
-	ioin.Ms2 = (val >> 3) & 0x01
-	ioin.Diag = (val >> 4) & 0x01
-	ioin.Reserved1 = (val >> 5) & 0x01
-	ioin.PdnSerial = (val >> 6) & 0x01
-	ioin.Step = (val >> 7) & 0x01
-	ioin.SpreadEn = (val >> 8) & 0x01
-	ioin.Dir = (val >> 9) & 0x01
-	ioin.Reserved2 = (val >> 10) & 0x3FFF
-	ioin.Version = (val >> 24) & 0xFF
+func (i *Ioin) Unpack(val uint32) {
+	i.Enn = val & 0x01
+	i.Reserved0 = (val >> 1) & 0x01
+	i.Ms1 = (val >> 2) & 0x01
+	i.Ms2 = (val >> 3) & 0x01
+	i.Diag = (val >> 4) & 0x01
+	i.Reserved1 = (val >> 5) & 0x01
+	i.PdnSerial = (val >> 6) & 0x01
+	i.Step = (val >> 7) & 0x01
+	i.SpreadEn = (val >> 8) & 0x01
+	i.Dir = (val >> 9) & 0x01
+	i.Reserved2 = (val >> 10) & 0x3FFF
+	i.Version = (val >> 24) & 0xFF
 }
 
 // PWMConf represents the fields in the TMC2209 PWMCONF register.
@@ -149,29 +120,26 @@ type PWMConf struct {
 	PwmLim       uint32 // 4 bits
 }
 
-// Pack Method to pack the fields into the Bytes field
-func (pwm *PWMConf) Pack() (uint8, uint32) {
-	return PWMCONF, (pwm.PwmOfs & 0xFF) |
-		((pwm.PwmGrad & 0xFF) << 8) |
-		((pwm.PwmFreq & 0x03) << 16) |
-		((pwm.PwmAutoscale & 0x01) << 18) |
-		((pwm.PwmAutograd & 0x01) << 19) |
-		((pwm.Freewheel & 0x03) << 20) |
-		((pwm.PwmReg & 0x0F) << 24) |
-		((pwm.PwmLim & 0x0F) << 28) // PWM_LIM is 4 bits and goes in the last 4 bits
+func (p *PWMConf) Pack() (uint8, uint32) {
+	return PWMCONF, (p.PwmOfs & 0xFF) |
+		((p.PwmGrad & 0xFF) << 8) |
+		((p.PwmFreq & 0x03) << 16) |
+		((p.PwmAutoscale & 0x01) << 18) |
+		((p.PwmAutograd & 0x01) << 19) |
+		((p.Freewheel & 0x03) << 20) |
+		((p.PwmReg & 0x0F) << 24) |
+		((p.PwmLim & 0x0F) << 28) // PWM_LIM is 4 bits and goes in the last 4 bits
 }
 
-// Unpack Method to unpack the Bytes field into individual fields
-func (pwm *PWMConf) Unpack(val uint32) {
-	// Unpack the Bytes field into individual fields
-	pwm.PwmOfs = val & 0xFF
-	pwm.PwmGrad = (val >> 8) & 0xFF
-	pwm.PwmFreq = (val >> 16) & 0x03
-	pwm.PwmAutoscale = (val >> 18) & 0x01
-	pwm.PwmAutograd = (val >> 19) & 0x01
-	pwm.Freewheel = (val >> 20) & 0x03
-	pwm.PwmReg = (val >> 24) & 0x0F
-	pwm.PwmLim = (val >> 28) & 0x0F
+func (p *PWMConf) Unpack(val uint32) {
+	p.PwmOfs = val & 0xFF
+	p.PwmGrad = (val >> 8) & 0xFF
+	p.PwmFreq = (val >> 16) & 0x03
+	p.PwmAutoscale = (val >> 18) & 0x01
+	p.PwmAutograd = (val >> 19) & 0x01
+	p.Freewheel = (val >> 20) & 0x03
+	p.PwmReg = (val >> 24) & 0x0F
+	p.PwmLim = (val >> 28) & 0x0F
 }
 
 // Chopconf represents the fields in the TMC2209 CHOPCONF register.
@@ -231,35 +199,32 @@ type Chopconf struct {
 	Diss2vs uint32
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (chopconf *Chopconf) Pack() (uint8, uint32) {
-	return CHOPCONF, (chopconf.Toff & 0x0F) |
-		((chopconf.Hstrt & 0x07) << 4) |
-		((chopconf.Hend & 0x0F) << 7) |
-		((chopconf.Tbl & 0x03) << 15) |
-		((chopconf.Vsense & 0x01) << 17) |
-		((chopconf.Mres & 0x0F) << 24) |
-		((chopconf.Intpol & 0x01) << 28) |
-		((chopconf.Dedge & 0x01) << 29) |
-		((chopconf.Diss2g & 0x01) << 30) |
-		((chopconf.Diss2vs & 0x01) << 31)
+func (c *Chopconf) Pack() (uint8, uint32) {
+	return CHOPCONF, (c.Toff & 0x0F) |
+		((c.Hstrt & 0x07) << 4) |
+		((c.Hend & 0x0F) << 7) |
+		((c.Tbl & 0x03) << 15) |
+		((c.Vsense & 0x01) << 17) |
+		((c.Mres & 0x0F) << 24) |
+		((c.Intpol & 0x01) << 28) |
+		((c.Dedge & 0x01) << 29) |
+		((c.Diss2g & 0x01) << 30) |
+		((c.Diss2vs & 0x01) << 31)
 }
 
-// Unpack the Bytes field into the individual fields.
-func (chopconf *Chopconf) Unpack(val uint32) {
-	chopconf.Toff = val & 0x0F
-	chopconf.Hstrt = (val >> 4) & 0x07
-	chopconf.Hend = (val >> 7) & 0x0F
-	chopconf.Tbl = (val >> 15) & 0x03
-	chopconf.Vsense = (val >> 17) & 0x01
-	chopconf.Mres = (val >> 24) & 0x0F
-	chopconf.Intpol = (val >> 28) & 0x01
-	chopconf.Dedge = (val >> 29) & 0x01
-	chopconf.Diss2g = (val >> 30) & 0x01
-	chopconf.Diss2vs = (val >> 31) & 0x01
+func (c *Chopconf) Unpack(val uint32) {
+	c.Toff = val & 0x0F
+	c.Hstrt = (val >> 4) & 0x07
+	c.Hend = (val >> 7) & 0x0F
+	c.Tbl = (val >> 15) & 0x03
+	c.Vsense = (val >> 17) & 0x01
+	c.Mres = (val >> 24) & 0x0F
+	c.Intpol = (val >> 28) & 0x01
+	c.Dedge = (val >> 29) & 0x01
+	c.Diss2g = (val >> 30) & 0x01
+	c.Diss2vs = (val >> 31) & 0x01
 }
 
-// Gstat represents the fields in the TMC2209 GSTAT register.
 type Gstat struct {
 	Reset    uint32
 	DrvErr   uint32
@@ -267,20 +232,18 @@ type Gstat struct {
 	Reserved uint32
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (gstat *Gstat) Pack() (uint8, uint32) {
-	return GSTAT, (gstat.Reset & 0x01) |
-		((gstat.DrvErr & 0x01) << 1) |
-		((gstat.UvCp & 0x01) << 2) |
-		((gstat.Reserved & 0x1FFFFF) << 3) // 21 bits reserved
+func (g *Gstat) Pack() (uint8, uint32) {
+	return GSTAT, (g.Reset & 0x01) |
+		((g.DrvErr & 0x01) << 1) |
+		((g.UvCp & 0x01) << 2) |
+		((g.Reserved & 0x1FFFFF) << 3) // 21 bits reserved
 }
 
-// Unpack the Bytes field into the individual fields.
-func (gstat *Gstat) Unpack(val uint32) {
-	gstat.Reset = val & 0x01
-	gstat.DrvErr = (val >> 1) & 0x01
-	gstat.UvCp = (val >> 2) & 0x01
-	gstat.Reserved = (val >> 3) & 0x1FFFFF
+func (g *Gstat) Unpack(val uint32) {
+	g.Reset = val & 0x01
+	g.DrvErr = (val >> 1) & 0x01
+	g.UvCp = (val >> 2) & 0x01
+	g.Reserved = (val >> 3) & 0x1FFFFF
 }
 
 // Gconf represents the fields in the TMC2209 GCONF register.
@@ -341,32 +304,30 @@ type Gconf struct {
 	Reserved       uint32
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (gconf *Gconf) Pack() (uint8, uint32) {
-	return GCONF, (gconf.IScaleAnalog & 0x01) |
-		((gconf.InternalRsense & 0x01) << 1) |
-		((gconf.EnSpreadcycle & 0x01) << 2) |
-		((gconf.Shaft & 0x01) << 3) |
-		((gconf.IndexOtpw & 0x01) << 4) |
-		((gconf.IndexStep & 0x01) << 5) |
-		((gconf.PdnDisable & 0x01) << 6) |
-		((gconf.MstepRegSelect & 0x01) << 7) |
-		((gconf.MultistepFilt & 0x01) << 8) |
-		((gconf.Reserved & 0x1FFFFF) << 9) // 21 bits reserved
+func (g *Gconf) Pack() (uint8, uint32) {
+	return GCONF, (g.IScaleAnalog & 0x01) |
+		((g.InternalRsense & 0x01) << 1) |
+		((g.EnSpreadcycle & 0x01) << 2) |
+		((g.Shaft & 0x01) << 3) |
+		((g.IndexOtpw & 0x01) << 4) |
+		((g.IndexStep & 0x01) << 5) |
+		((g.PdnDisable & 0x01) << 6) |
+		((g.MstepRegSelect & 0x01) << 7) |
+		((g.MultistepFilt & 0x01) << 8) |
+		((g.Reserved & 0x1FFFFF) << 9) // 21 bits reserved
 }
 
-// Unpack the Bytes field into the individual fields.
-func (gconf *Gconf) Unpack(val uint32) {
-	gconf.IScaleAnalog = val & 0x01
-	gconf.InternalRsense = (val >> 1) & 0x01
-	gconf.EnSpreadcycle = (val >> 2) & 0x01
-	gconf.Shaft = (val >> 3) & 0x01
-	gconf.IndexOtpw = (val >> 4) & 0x01
-	gconf.IndexStep = (val >> 5) & 0x01
-	gconf.PdnDisable = (val >> 6) & 0x01
-	gconf.MstepRegSelect = (val >> 7) & 0x01
-	gconf.MultistepFilt = (val >> 8) & 0x01
-	gconf.Reserved = (val >> 9) & 0x1FFFFF
+func (g *Gconf) Unpack(val uint32) {
+	g.IScaleAnalog = val & 0x01
+	g.InternalRsense = (val >> 1) & 0x01
+	g.EnSpreadcycle = (val >> 2) & 0x01
+	g.Shaft = (val >> 3) & 0x01
+	g.IndexOtpw = (val >> 4) & 0x01
+	g.IndexStep = (val >> 5) & 0x01
+	g.PdnDisable = (val >> 6) & 0x01
+	g.MstepRegSelect = (val >> 7) & 0x01
+	g.MultistepFilt = (val >> 8) & 0x01
+	g.Reserved = (val >> 9) & 0x1FFFFF
 }
 
 // Ifcnt represents the fields in the TMC2209 IFCNT register.
@@ -390,16 +351,14 @@ type Ifcnt struct {
 	Reserved uint32 // Reserved bits, here represented as uint32 for simplicity
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (ifcnt *Ifcnt) Pack() (uint8, uint32) {
-	return IFCNT, (ifcnt.Ifcnt & 0xFF) | // 8 bits for the interface counter
-		((ifcnt.Reserved & 0xFFFFFF) << 8) // Remaining bits for reserved (24 bits)
+func (i *Ifcnt) Pack() (uint8, uint32) {
+	return IFCNT, (i.Ifcnt & 0xFF) | // 8 bits for the interface counter
+		((i.Reserved & 0xFFFFFF) << 8) // Remaining bits for reserved (24 bits)
 }
 
-// Unpack the Bytes field into the individual fields.
-func (ifcnt *Ifcnt) Unpack(val uint32) {
-	ifcnt.Ifcnt = val & 0xFF
-	ifcnt.Reserved = (val >> 8) & 0xFFFFFF
+func (i *Ifcnt) Unpack(val uint32) {
+	i.Ifcnt = val & 0xFF
+	i.Reserved = (val >> 8) & 0xFFFFFF
 }
 
 // IholdIrun  represents the fields in the TMC2209 IHOLD_IRUN register.
@@ -430,18 +389,16 @@ type IholdIrun struct {
 	Iholddelay uint32 // 4 bits for hold delay
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (iholdIrun *IholdIrun) Pack() (uint8, uint32) {
-	return IHOLD_IRUN, (iholdIrun.Ihold & 0x1F) | // 5 bits for IHOLD
-		((iholdIrun.Irun & 0x1F) << 5) | // 5 bits for IRUN
-		((iholdIrun.Iholddelay & 0x0F) << 10) // 4 bits for IHOLDD_DELAY
+func (i *IholdIrun) Pack() (uint8, uint32) {
+	return IHOLD_IRUN, (i.Ihold & 0x1F) | // 5 bits for IHOLD
+		((i.Irun & 0x1F) << 5) | // 5 bits for IRUN
+		((i.Iholddelay & 0x0F) << 10) // 4 bits for IHOLDD_DELAY
 }
 
-// Unpack the Bytes field into the individual fields.
-func (iholdIrun *IholdIrun) Unpack(val uint32) {
-	iholdIrun.Ihold = val & 0x1F
-	iholdIrun.Irun = (val >> 5) & 0x1F
-	iholdIrun.Iholddelay = (val >> 10) & 0x0F
+func (i *IholdIrun) Unpack(val uint32) {
+	i.Ihold = val & 0x1F
+	i.Irun = (val >> 5) & 0x1F
+	i.Iholddelay = (val >> 10) & 0x0F
 }
 
 // Tpwmthrs represents the fields in the TMC2209 TPWMTHRS register.
@@ -465,14 +422,12 @@ type Tpwmthrs struct {
 	Threshold uint32 // 32-bit threshold value
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (tpwmthrs *Tpwmthrs) Pack() (uint8, uint32) {
-	return TPWMTHRS, tpwmthrs.Threshold & 0xFFFFFFFF // 32-bit threshold value
+func (t *Tpwmthrs) Pack() (uint8, uint32) {
+	return TPWMTHRS, t.Threshold & 0xFFFFFFFF // 32-bit threshold value
 }
 
-// Unpack the Bytes field into the individual fields.
-func (tpwmthrs *Tpwmthrs) Unpack(val uint32) {
-	tpwmthrs.Threshold = val & 0xFFFFFFFF
+func (t *Tpwmthrs) Unpack(val uint32) {
+	t.Threshold = val & 0xFFFFFFFF
 }
 
 // Vactual represents the fields in the TMC2209 VACTUAL register.
@@ -494,14 +449,12 @@ type Vactual struct {
 	Velocity uint32 // 32-bit velocity value
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (vactual *Vactual) Pack() (uint8, uint32) {
-	return VACTUAL, vactual.Velocity & 0xFFFFFFFF // 32-bit velocity value
+func (v *Vactual) Pack() (uint8, uint32) {
+	return VACTUAL, v.Velocity & 0xFFFFFFFF // 32-bit velocity value
 }
 
-// Unpack the Bytes field into the individual fields.
-func (vactual *Vactual) Unpack(val uint32) {
-	vactual.Velocity = val & 0xFFFFFFFF
+func (v *Vactual) Unpack(val uint32) {
+	v.Velocity = val & 0xFFFFFFFF
 }
 
 // Tcoolthrs represents the fields in the TMC2209 TCOOLTHRS register.
@@ -525,14 +478,12 @@ type Tcoolthrs struct {
 	Velocity uint32 // 20 bits for velocity
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (tcoolthrs *Tcoolthrs) Pack() (uint8, uint32) {
-	return TCOOLTHRS, tcoolthrs.Velocity & 0xFFFFF // Keep only the lower 20 bits
+func (t *Tcoolthrs) Pack() (uint8, uint32) {
+	return TCOOLTHRS, t.Velocity & 0xFFFFF // Keep only the lower 20 bits
 }
 
-// Unpack the Bytes field into the individual fields.
-func (tcoolthrs *Tcoolthrs) Unpack(val uint32) {
-	tcoolthrs.Velocity = val & 0xFFFFF
+func (t *Tcoolthrs) Unpack(val uint32) {
+	t.Velocity = val & 0xFFFFF
 }
 
 // Sgthrs represents the fields in the TMC2209 SGTHRS register.
@@ -554,14 +505,12 @@ type Sgthrs struct {
 	Threshold uint32 // 8 bits for threshold value
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (sgthrs *Sgthrs) Pack() (uint8, uint32) {
-	return SGTHRS, sgthrs.Threshold & 0xFF // Keep only the lower 8 bits
+func (s *Sgthrs) Pack() (uint8, uint32) {
+	return SGTHRS, s.Threshold & 0xFF // Keep only the lower 8 bits
 }
 
-// Unpack the Bytes field into the individual fields.
-func (sgthrs *Sgthrs) Unpack(val uint32) {
-	sgthrs.Threshold = val & 0xFF
+func (s *Sgthrs) Unpack(val uint32) {
+	s.Threshold = val & 0xFF
 }
 
 // SgResult represents the fields in the TMC2209 SG_RESULT register.
@@ -585,14 +534,12 @@ type SgResult struct {
 	Result uint32 // 10 bits for the result
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (sgResult *SgResult) Pack() (uint8, uint32) {
-	return SG_RESULT, sgResult.Result & 0x3FF // Keep only the lower 10 bits
+func (s *SgResult) Pack() (uint8, uint32) {
+	return SG_RESULT, s.Result & 0x3FF // Keep only the lower 10 bits
 }
 
-// Unpack the Bytes field into the individual fields.
-func (sgResult *SgResult) Unpack(val uint32) {
-	sgResult.Result = val & 0x3FF
+func (s *SgResult) Unpack(val uint32) {
+	s.Result = val & 0x3FF
 }
 
 // CoolConf represents the fields in the TMC2209 COOLCONF register.
@@ -633,26 +580,24 @@ type CoolConf struct {
 	Reserved       uint32 // Reserved 10 bits
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (coolConf *CoolConf) Pack() (uint8, uint32) {
-	return COOLCONF, (coolConf.Semin & 0x01) |
-		((coolConf.Sedn & 0x03) << 1) |
-		((coolConf.Semax & 0x0F) << 3) |
-		((coolConf.Seup & 0x07) << 7) |
-		((coolConf.Semin2 & 0x3F) << 10) |
-		((coolConf.CoolStepEnable & 0x01) << 16) |
-		((coolConf.Reserved & 0x3FF) << 17) // Reserve 10 bits for reserved fields
+func (c *CoolConf) Pack() (uint8, uint32) {
+	return COOLCONF, (c.Semin & 0x01) |
+		((c.Sedn & 0x03) << 1) |
+		((c.Semax & 0x0F) << 3) |
+		((c.Seup & 0x07) << 7) |
+		((c.Semin2 & 0x3F) << 10) |
+		((c.CoolStepEnable & 0x01) << 16) |
+		((c.Reserved & 0x3FF) << 17) // Reserve 10 bits for reserved fields
 }
 
-// Unpack the Bytes field into the individual fields.
-func (coolConf *CoolConf) Unpack(val uint32) {
-	coolConf.Semin = val & 0x01
-	coolConf.Sedn = (val >> 1) & 0x03
-	coolConf.Semax = (val >> 3) & 0x0F
-	coolConf.Seup = (val >> 7) & 0x07
-	coolConf.Semin2 = (val >> 10) & 0x3F
-	coolConf.CoolStepEnable = (val >> 16) & 0x01
-	coolConf.Reserved = (val >> 17) & 0x3FF
+func (c *CoolConf) Unpack(val uint32) {
+	c.Semin = val & 0x01
+	c.Sedn = (val >> 1) & 0x03
+	c.Semax = (val >> 3) & 0x0F
+	c.Seup = (val >> 7) & 0x07
+	c.Semin2 = (val >> 10) & 0x3F
+	c.CoolStepEnable = (val >> 16) & 0x01
+	c.Reserved = (val >> 17) & 0x3FF
 }
 
 // DrvStatus represents the fields in the TMC2209 DRV_STATUS register.
@@ -732,44 +677,42 @@ type DrvStatus struct {
 	Reserved uint32 // Reserved bits
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (drvStatus *DrvStatus) Pack() (uint8, uint32) {
-	return DRV_STATUS, (drvStatus.Stst & 0x01) |
-		((drvStatus.Stealth & 0x01) << 1) |
-		((drvStatus.CsActual & 0xFFFF) << 2) | // Actual current in bits 16-31
-		((drvStatus.T157 & 0x01) << 18) |
-		((drvStatus.T150 & 0x01) << 19) |
-		((drvStatus.T143 & 0x01) << 20) |
-		((drvStatus.T120 & 0x01) << 21) |
-		((drvStatus.Olb & 0x01) << 22) |
-		((drvStatus.Ola & 0x01) << 23) |
-		((drvStatus.S2vsb & 0x01) << 24) |
-		((drvStatus.S2vsa & 0x01) << 25) |
-		((drvStatus.S2gb & 0x01) << 26) |
-		((drvStatus.S2ga & 0x01) << 27) |
-		((drvStatus.Ot & 0x01) << 28) |
-		((drvStatus.Otpw & 0x01) << 29) |
-		((drvStatus.Reserved & 0x7FF) << 30) // Reserved bits
+func (d *DrvStatus) Pack() (uint8, uint32) {
+	return DRV_STATUS, (d.Stst & 0x01) |
+		((d.Stealth & 0x01) << 1) |
+		((d.CsActual & 0xFFFF) << 2) | // Actual current in bits 16-31
+		((d.T157 & 0x01) << 18) |
+		((d.T150 & 0x01) << 19) |
+		((d.T143 & 0x01) << 20) |
+		((d.T120 & 0x01) << 21) |
+		((d.Olb & 0x01) << 22) |
+		((d.Ola & 0x01) << 23) |
+		((d.S2vsb & 0x01) << 24) |
+		((d.S2vsa & 0x01) << 25) |
+		((d.S2gb & 0x01) << 26) |
+		((d.S2ga & 0x01) << 27) |
+		((d.Ot & 0x01) << 28) |
+		((d.Otpw & 0x01) << 29) |
+		((d.Reserved & 0x7FF) << 30) // Reserved bits
 }
 
-// Unpack the Bytes field into the individual fields.
-func (drvStatus *DrvStatus) Unpack(val uint32) {
-	drvStatus.Stst = val & 0x01
-	drvStatus.Stealth = (val >> 1) & 0x01
-	drvStatus.CsActual = (val >> 2) & 0xFFFF
-	drvStatus.T157 = (val >> 18) & 0x01
-	drvStatus.T150 = (val >> 19) & 0x01
-	drvStatus.T143 = (val >> 20) & 0x01
-	drvStatus.T120 = (val >> 21) & 0x01
-	drvStatus.Olb = (val >> 22) & 0x01
-	drvStatus.Ola = (val >> 23) & 0x01
-	drvStatus.S2vsb = (val >> 24) & 0x01
-	drvStatus.S2vsa = (val >> 25) & 0x01
-	drvStatus.S2gb = (val >> 26) & 0x01
-	drvStatus.S2ga = (val >> 27) & 0x01
-	drvStatus.Ot = (val >> 28) & 0x01
-	drvStatus.Otpw = (val >> 29) & 0x01
-	drvStatus.Reserved = (val >> 30) & 0x7FF
+func (d *DrvStatus) Unpack(val uint32) {
+	d.Stst = val & 0x01
+	d.Stealth = (val >> 1) & 0x01
+	d.CsActual = (val >> 2) & 0xFFFF
+	d.T157 = (val >> 18) & 0x01
+	d.T150 = (val >> 19) & 0x01
+	d.T143 = (val >> 20) & 0x01
+	d.T120 = (val >> 21) & 0x01
+	d.Olb = (val >> 22) & 0x01
+	d.Ola = (val >> 23) & 0x01
+	d.S2vsb = (val >> 24) & 0x01
+	d.S2vsa = (val >> 25) & 0x01
+	d.S2gb = (val >> 26) & 0x01
+	d.S2ga = (val >> 27) & 0x01
+	d.Ot = (val >> 28) & 0x01
+	d.Otpw = (val >> 29) & 0x01
+	d.Reserved = (val >> 30) & 0x7FF
 }
 
 // PwmScale represents the fields in the TMC2209 PWM_SCALE register.
@@ -792,16 +735,14 @@ type PwmScale struct {
 	PwmScaleAuto int32  // 9-bit signed offset (-255 to +255)
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (pwm *PwmScale) Pack() (uint8, uint32) {
-	return PWM_SCALE, (pwm.PwmScaleSum & 0xFF) |
-		((uint32(pwm.PwmScaleAuto) & 0x1FF) << 8) // 9 bits for PWM_SCALE_AUTO
+func (p *PwmScale) Pack() (uint8, uint32) {
+	return PWM_SCALE, (p.PwmScaleSum & 0xFF) |
+		((uint32(p.PwmScaleAuto) & 0x1FF) << 8) // 9 bits for PWM_SCALE_AUTO
 }
 
-// Unpack the Bytes field into the individual fields.
-func (pwm *PwmScale) Unpack(val uint32) {
-	pwm.PwmScaleSum = val & 0xFF
-	pwm.PwmScaleAuto = int32((val >> 8) & 0x1FF) // 9-bit signed value
+func (p *PwmScale) Unpack(val uint32) {
+	p.PwmScaleSum = val & 0xFF
+	p.PwmScaleAuto = int32((val >> 8) & 0x1FF) // 9-bit signed value
 }
 
 // PwmAuto represents the fields in the TMC2209 PWM_AUTO register.
@@ -825,16 +766,14 @@ type PwmAuto struct {
 	PwmGradAuto int32 // 8-bit automatically determined gradient value (-255 to +255)
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-func (pwm *PwmAuto) Pack() (uint8, uint32) {
-	return PWM_AUTO, (uint32(pwm.PwmOfsAuto) & 0xFF) |
-		((uint32(pwm.PwmGradAuto) & 0xFF) << 8) // 8 bits for each value
+func (p *PwmAuto) Pack() (uint8, uint32) {
+	return PWM_AUTO, (uint32(p.PwmOfsAuto) & 0xFF) |
+		((uint32(p.PwmGradAuto) & 0xFF) << 8) // 8 bits for each value
 }
 
-// Unpack the Bytes field into the individual fields.
-func (pwm *PwmAuto) Unpack(val uint32) {
-	pwm.PwmOfsAuto = int32(val & 0xFF)
-	pwm.PwmGradAuto = int32((val >> 8) & 0xFF)
+func (p *PwmAuto) Unpack(val uint32) {
+	p.PwmOfsAuto = int32(val & 0xFF)
+	p.PwmGradAuto = int32((val >> 8) & 0xFF)
 }
 
 // Tpowerdown represents the fields in the TMC2209 TPOWERDOWN register.
@@ -853,14 +792,12 @@ type Tpowerdown struct {
 	DelayTime uint32 // Delay time from standstill detection to motor current power-down (8 bits)
 }
 
-// Pack the DelayTime field into the Bytes field (a single 8-bit value).
-func (tpd *Tpowerdown) Pack() (uint8, uint32) {
-	return TPOWERDOWN, tpd.DelayTime & 0xFF
+func (t *Tpowerdown) Pack() (uint8, uint32) {
+	return TPOWERDOWN, t.DelayTime & 0xFF
 }
 
-// Unpack the Bytes field into the DelayTime field.
-func (tpd *Tpowerdown) Unpack(val uint32) {
-	tpd.DelayTime = val & 0xFF
+func (t *Tpowerdown) Unpack(val uint32) {
+	t.DelayTime = val & 0xFF
 }
 
 // Tstep represents the fields in the TMC2209 TSTEP register.
@@ -881,14 +818,12 @@ type Tstep struct {
 	StepTime uint32 // Time between 1/256 microsteps (20 bits)
 }
 
-// Pack the StepTime field into the Bytes field (a single 20-bit value).
-func (tstep *Tstep) Pack() (uint8, uint32) {
-	return TSTEP, tstep.StepTime & 0xFFFFF // 20 bits for TSTEP
+func (t *Tstep) Pack() (uint8, uint32) {
+	return TSTEP, t.StepTime & 0xFFFFF // 20 bits for TSTEP
 }
 
-// Unpack the Bytes field into the StepTime field.
-func (tstep *Tstep) Unpack(val uint32) {
-	tstep.StepTime = val & 0xFFFFF
+func (t *Tstep) Unpack(val uint32) {
+	t.StepTime = val & 0xFFFFF
 }
 
 // Mscnt  represents the Microstep Counter Register (0x6A) in the TMC2209
@@ -904,14 +839,12 @@ type Mscnt struct {
 	Position uint32
 }
 
-// Pack the Position value (10-bit) into the Bytes field
-func (mscnt *Mscnt) Pack() (uint8, uint32) {
-	return MSCNT, mscnt.Position & 0x03FF // Limit to 10 bits (0x3FF)
+func (m *Mscnt) Pack() (uint8, uint32) {
+	return MSCNT, m.Position & 0x03FF // Limit to 10 bits (0x3FF)
 }
 
-// Unpack the Bytes field into the Position field.
-func (mscnt *Mscnt) Unpack(val uint32) {
-	mscnt.Position = val & 0x03FF
+func (m *Mscnt) Unpack(val uint32) {
+	m.Position = val & 0x03FF
 }
 
 // Mscuract MSCURACT represents the Microstep Current Register (0x6B) in the TMC2209
@@ -924,39 +857,30 @@ func (mscnt *Mscnt) Unpack(val uint32) {
 // - CUR_B (bits 0-7): The actual microstep current for motor phase B (signed value in the range +/-255).
 // - CUR_A (bits 24-16): The actual microstep current for motor phase A (signed value in the range +/-255).
 type Mscuract struct {
-	// Microstep current for phase B (sine wave)
 	CurB uint32
-	// Microstep current for phase A (cosine wave)
 	CurA uint32
 }
 
-// TODO:  this seems wrong, fix it?
-func (mscuract *Mscuract) Pack() (uint8, uint32) {
-	mscuract.CurB = mscuract.CurB & 0xFF // Limit to 8 bits for CUR_B
-	mscuract.CurA = mscuract.CurA & 0xFF // Limit to 8 bits for CUR_A
-	return MSCURACT, mscuract.CurA
+// TODO:  this seems wrong, fix it? (DONE (is this correct?))
+func (m *Mscuract) Pack() (uint8, uint32) {
+	m.CurB = m.CurB & 0xFF // Limit to 8 bits for CUR_B
+	m.CurA = m.CurA & 0xFF // Limit to 8 bits for CUR_A
+	return MSCURACT, (m.CurA << 16) | m.CurB
 }
 
-// Unpack the Bytes field into the individual fields.
-func (mscuract *Mscuract) Unpack(val uint32) {
-	mscuract.CurB = val & 0xFF         // Extract CUR_B (8 bits)
-	mscuract.CurA = (val >> 16) & 0xFF // Extract CUR_A (8 bits)
+func (m *Mscuract) Unpack(val uint32) {
+	m.CurB = val & 0xFF         // Extract CUR_B (8 bits)
+	m.CurA = (val >> 16) & 0xFF // Extract CUR_A (8 bits)
 }
 
 type NodeConf struct {
 	SendDelay uint32
 }
 
-// Pack the individual fields into the Bytes field (a single 32-bit value).
-// This method combines all the individual fields (like Enn, Ms1, etc.)
-// into a packed 32-bit value that can be written to the register.
 func (n *NodeConf) Pack() (uint8, uint32) {
 	return NODECONF, (n.SendDelay & 0b1111)
 }
 
-// Unpack the Bytes field into the individual fields.
-// This method takes the packed 32-bit value from the Bytes field and extracts
-// the individual register fields into their corresponding variables.
 func (n *NodeConf) Unpack(val uint32) {
 	n.SendDelay = val & 0b1111
 }
